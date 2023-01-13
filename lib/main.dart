@@ -1,115 +1,203 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 
-void main() {
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+import 'package:pile/screens/home_screen.dart';
+import 'package:pile/screens/login_screen.dart';
+import 'package:pile/services/firebase_auth_methods.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:pile/screens/signup_email_password_screen.dart';
+import 'package:pile/screens/login_email_password_screen.dart';
+import 'package:pile/screens/phone_screen.dart';
+import 'firebase_options.dart';
+import 'package:flutter/foundation.dart';
+// import 'package:responsive_framework/responsive_framework.dart';
+import 'package:animations/animations.dart';
+import 'package:pile/screens/profile/profile_page.dart';
+import 'package:pile/screens/profile/models/content_model.dart';
+import '.env.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  // This widget is the root of your application.
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.blue,
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
-    );
-  }
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+    return MultiProvider(
+      providers: [
+        Provider<FirebaseAuthMethods>(
+          create: (_) => FirebaseAuthMethods(FirebaseAuth.instance),
         ),
+        StreamProvider(
+          create: (context) => context.read<FirebaseAuthMethods>().authState,
+          initialData: null,
+        ),
+      ],
+      child: MaterialApp(
+        title: 'Pile',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+        ),
+        scrollBehavior: WebMouseScrollBehavior(),
+
+        home: kIsWeb ? const ProfilePage() : const AuthWrapper(),
+        // builder: (context, widget) => ResponsiveWrapper.builder(
+        //   BouncingScrollWrapper.builder(context, widget!),
+
+        //   defaultScale: false,
+        //   breakpoints: [
+        //     const ResponsiveBreakpoint.resize(480, name: MOBILE),
+        //     const ResponsiveBreakpoint.autoScale(800, name: TABLET),
+        //     const ResponsiveBreakpoint.autoScale(1000, name: DESKTOP),
+        //   ],
+        //   // background: Container(
+        //   //     color: Color(0xFFF5F5F5))
+        // ),
+        routes: {
+          EmailPasswordSignup.routeName: (context) =>
+              const EmailPasswordSignup(),
+          EmailPasswordLogin.routeName: (context) => const EmailPasswordLogin(),
+          PhoneScreen.routeName: (context) => const PhoneScreen(),
+        },
+        onGenerateRoute: (RouteSettings settings) {
+          return Routes.fadeThrough(settings, (context) {
+            switch (settings.name) {
+              case Routes.home:
+                return const ProfilePage();
+              case Routes.profile:
+                return const ProfilePage();
+
+              default:
+                return const SizedBox.shrink();
+            }
+          });
+        },
+        debugShowCheckedModeBanner: false,
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
+}
+
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final firebaseUser = context.watch<User?>();
+
+    if (firebaseUser != null) {
+      return const HomeScreen();
+    }
+    return const LoginScreen();
+  }
+}
+
+// profile page only for web version
+// responsive screen with future snapshot
+class ProfilePage extends StatelessWidget {
+  const ProfilePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: FutureBuilder<DocumentSnapshot>(
+        future: FirebaseFirestore.instance.doc(profileDocReference).get(),
+        builder:
+            (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
+          List<Widget> children;
+
+          if (snapshot.hasData) {
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth > 800) {
+                  return Desktop(
+                    contents: ContentModel.fromDataSnapshot(snapshot),
+                  );
+                } else {
+                  return Mobile(
+                    contents: ContentModel.fromDataSnapshot(snapshot),
+                  );
+                }
+              },
+            );
+          } else if (snapshot.hasError) {
+            children = <Widget>[
+              const Icon(
+                Icons.error_outline,
+                color: Colors.red,
+                size: 60,
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: Text('Error: ${snapshot.error}'),
+              ),
+            ];
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: children,
+              ),
+            );
+          } else {
+            children = const <Widget>[
+              SizedBox(
+                width: 60,
+                height: 60,
+                child: CircularProgressIndicator(),
+              ),
+              Padding(
+                padding: EdgeInsets.only(top: 16),
+                child: Text('Awaiting result...'),
+              ),
+            ];
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: children,
+              ),
+            );
+          }
+        },
+      ),
+    );
+  }
+}
+
+class Routes {
+  static const String home = "/";
+  static const String profile = "profile";
+  // static const String style = "style";
+
+  static Route<T> fadeThrough<T>(RouteSettings settings, WidgetBuilder page,
+      {int duration = 300}) {
+    return PageRouteBuilder<T>(
+      settings: settings,
+      transitionDuration: Duration(milliseconds: duration),
+      pageBuilder: (context, animation, secondaryAnimation) => page(context),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeScaleTransition(animation: animation, child: child);
+      },
+    );
+  }
+}
+
+//enable web mnouse dragging
+class WebMouseScrollBehavior extends MaterialScrollBehavior {
+  // Override behavior methods and getters like dragDevices
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        // etc.
+      };
 }
